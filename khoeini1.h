@@ -1,4 +1,4 @@
-
+//int argc, char * argv[]
 #ifndef PROJECT_SCRATCH_KHOEINI1_H
 #define PROJECT_SCRATCH_KHOEINI1_H
 #include<bits/stdc++.h>
@@ -9,6 +9,7 @@
 #include <conio.h>
 #include <fstream>
 #include <sstream>
+
 using namespace std;
 enum levellog{log_info=0,log_warning=1,log_error=2};
 struct info_log {
@@ -336,7 +337,7 @@ static void render_log_tab(int x,int y,SDL_Rect panel_log) {
     int max_num_og_logline=(panel_log.h-50)/line_h;
     for (int i=0;i<max_num_og_logline;i++) {
         int num_line_in_pannel=i+logscroll;
-        if (num_line_in_pannel>=(int)logs.size()) {
+        if (num_line_in_pannel<(int)logs.size()) {
             string s=format(logs[num_line_in_pannel]);
             write_text_left(s.c_str(),x,y+i*line_h);
         }
