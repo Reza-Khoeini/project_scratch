@@ -40,11 +40,14 @@ bool is_running=false;
     uint32_t wait_until_t=0;
      int watchdog_counter=0;
      int watchdog_max=1000;
+    int visual_pc=-1;
+    bool error_active=false;
+    int error_pc=-1;
 };
 static bool turn_con_to_bool (int con) {
     return (con==1)?true:false;
 }
-static bool links_of_process(vector<block>& prog,string error_text) {
+static bool links_of_process(vector<block>& prog,string &error_text) {
     vector<int> if_idx_stack;
     vector<int> repeat_idx_stack;
     vector<int> forever_idx_stack;
@@ -267,20 +270,174 @@ static void performance_of_engine_in_each_frame(vector<block> &prog,engine_con &
         }
     }
 }
+// grafic of this shit
+static inline void scratch_background_color(Uint8& r, Uint8& g, Uint8& b,Uint8& a) {
+    r=30;
+    g=30;
+    b=30;
+    a=255;
+}
+static inline void control_block_color(Uint8& r,Uint8& g,Uint8& b,Uint8& a) {
+    r=255;
+    g=178;
+    b=64;
+    a=255;
+}
+static inline void control_ongoing_block_highlight(Uint8& r,Uint8& g,Uint8& b,Uint8& a) {
+    r=255;
+    g=210;
+    b=120;
+    a=255;
+}
+static inline void error_block_color(Uint8& r,Uint8& g,Uint8& b,Uint8& a) {
+    r=220;
+    g=60;
+    b=60;
+    a=255;
+}
+static inline const char* title_of_each_block(type_of_blocks t) {
+    switch (t) {
+        case B_wait_secs: {
+            return"wait";
+        }
+        case B_wait_until: {
+            return"wait until";
+        }
+        case B_stop: {
+            return"stop all";
+        }
+        case B_repeat_beg: {
+            return"repeat";
+        }
+        case B_repeat_end: {
+            return"end repeat";
+        }
+        case B_forever_beg: {
+            return"forever";
+        }
+        case B_forever_end: {
+            return"end forever";
+        }
+        case B_if_beg: {
+            return"if";
+        }
+        case B_else: {
+            return"else";
+        }
+        case B_if_end: {
+            return"end if";
+        }
+        case B_repeat_until_beg: {
+            return"repeat until";
+        }
+        case B_repeat_until_end: {
+            return"end repeat until";
+        }
+        default: {
+            return"";
+        }
+    }
+}
+static inline void draw_text(SDL_Renderer* r,TTF_Font* font,const string& text,int x, int y,Uint8& tr,Uint8& tg, Uint8& tb) {
+    if (!font) {
+        return;
+    }
+    SDL_Color col{
+        tr,tg,tb,255
+    };
+    SDL_Surface* s = TTF_RenderUTF8_Blended(font, text.c_str(), col);
+    if (!s) {
+        return;
+    }
+    SDL_Texture *t=TTF_RenderUTF8_Blended(font,text.c_str(),col);
+    if (!t) {
+        SDL_FreeSurface(s);
+        return;
+    }
+    SDL_Rect ds{x,y,s->w,s->h};
+    SDL_RenderCopy(r,t,nullptr,&ds);
+    SDL_FreeSurface(s);
+    SDL_DestroyTexture(t);
+}
+static inline void draw_scratch_blocks(SDL_Renderer* ren,int x, int y,int w,int h,bool has_top_notch,bool has_bottom_tab,bool highlight,bool error, const string & text,TTF_Font* font) {
+    Uint8 br,bg,bb,ba;
+    if (error) {
+        error_block_color(br,bg,bb,ba);
+    }else if (highlight) {
+        control_block_color(br,bg,bb,ba);
+    }else {
+        control_block_color(br,bg,bb,ba);
+    }
+int r=12;
+    roundedBoxRGBA(ren,x,y,x+w,y+h,r,br,bg,bb,ba);
+    if (has_top_notch) {
+        Uint8 rr,rg,rb,ra;
+        scratch_background_color(rr,rg,br,bg);
+        int notch_w=52;
+        int notch_h=12;
+        int notch_x=x+34;
+        int notch_y=y-1;
+        roundedBoxRGBA(ren,notch_x,notch_y,notch_x+notch_w,notch_y+notch_h,6,rr,rg,rb,ra);
+    }
+if (has_bottom_tab) {
+    int tab_w=62;
+    int tab_h=14;
+    int tab_x=x+30;
+    int tab_y=y+h-2;
+    roundedBoxRGBA(ren,tab_x,tab_y,tab_x+tab_w,tab_y+tab_h,7,br,bg,bb,ba);
+}
+    Uint8 orr,org,orb,ora;
+    orr=(Uint8)std::max(0,(int)br-40);
+    org=(Uint8)std::max(0,(int)bg-40);
+    orb=(Uint8)std::max(0,(int)bb-40);
+    ora=255;
+    roundedBoxRGBA(ren,x,y,x+w,y+h,r,orr,org,orb,ora);
+    draw_text(ren,font,text,x+18,y+10,255,255,255);
+}
+static inline void draw_control_main_script(SDL_Renderer* ren,TTF_Font* font,const vector<block>& prog,const engine_con & st,int start_x,int start_y) {
+    int y=start_y;
+    int indent=0;
+    const int block_w=260;
+    const int block_h=44;
+    const int gap=8;
+    const int indent_p=24;
+    for (int i=0;i<(int)prog.size();i++) {
+        const block& b=prog[i];
+        if (b.type==B_repeat_end||b.type==B_if_end||b.type==B_forever_end||b.type==B_repeat_until_end) {
+            indent=std::max(0,indent-1);
+        }
+        bool highlight=(st.visual_pc==i);
+        bool error=(st.error_active&&st.error_pc==i);
+        bool hasTopNotch=true;
+        bool hasBottomTab=true;
+        if (b.type==B_repeat_end||b.type==B_if_end||b.type==B_forever_end||b.type==B_repeat_until_end) {
+            hasBottomTab=false;
+        }
+        string label=title_of_each_block(b.type);
+        if (b.type==B_wait_secs) {
+            label+="("+to_string(b.num)+"ms)";
+        }
+        if (b.type==B_repeat_beg) {
+            label+="("+to_string(b.num)+")";
+        }
+        if (b.type==B_wait_until||b.type==B_if_beg||b.type==B_repeat_until_beg) {
+            label+="(cond="+to_string(b.cond)+")";
+        }
+        int x=start_x+(indent*indent_p);
+        draw_scratch_blocks(ren,x,y,block_w,block_h,hasTopNotch,hasBottomTab,highlight,error,label,font);
+        y+=block_h+gap;
+        if (b.type==B_repeat_beg||b.type==B_if_beg||b.type==B_forever_beg||b.type==B_repeat_until_beg) {
+            indent+=1;
+        }
+        if (b.type==B_else) {
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        }
+    }
+}
+static inline void clear_code_panel(SDL_Renderer* r) {
+    Uint8 rr,rg,rb,ra;
+    scratch_background_color(rr,rg,rb,ra);
+    SDL_SetRenderDrawColor(r, rr,rg,rb,ra);
+    SDL_RenderClear(r);
+}
 #endif
