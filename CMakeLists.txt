@@ -7,5 +7,11 @@ add_executable(project_scratch main.cpp
         Pen.h
         Pen.cpp
         UI.h
-        UI.cpp)
+        UI.cpp
+        Drawlayer.h
+        Drawlayer.cpp
+        ColorUtil.h
+        ColorUtil.cpp
+        UICallback.h
+        UICallback.cpp)
 target_link_libraries(${PROJECT_NAME} -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf -lSDL2_mixer)
