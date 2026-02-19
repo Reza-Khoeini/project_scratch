@@ -1,2 +1,6 @@
-#include<bits/stdc++.h>
-using namespace std;
+#include"khoeini1.h"
+int main(int argc, char * argv[]) {
+
+    return 0;
+}
+
