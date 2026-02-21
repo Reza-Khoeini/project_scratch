@@ -1,10 +1,4 @@
 #include  "Drawlayer.h"
-#include <bits/stdc++.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL2_gfx.h>
-using namespace std  ;
 
 
 
@@ -13,7 +7,7 @@ using namespace std  ;
 
 // just for this file
 
-static SDL_Texture *  drawTexture = nullptr ;
+inline static SDL_Texture *  drawTexture = nullptr ;
 static int  wLayer = 0 ;
 static int  hLayer = 0 ;
 

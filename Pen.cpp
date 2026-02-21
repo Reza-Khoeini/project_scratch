@@ -1,12 +1,6 @@
 #include "Pen.h"
 #include "ColorUtil.h"
 #include "Drawlayer.h"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL2_gfx.h>
-#include <bits/stdc++.h>
-#include "Drawlayer.h"
 
 
 //  فعال است = 1 وگرنه = 0

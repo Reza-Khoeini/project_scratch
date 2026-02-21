@@ -1,12 +1,5 @@
 #include "Costumes.h"
-#include <bits/stdc++.h>
-#include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL2_gfx.h>
-#include  <bits/stdc++.h>
-using namespace std ;
-#include <string.h>
 
 
 static  Custome costums[MAX_COSTUMES] ;
@@ -168,6 +161,7 @@ void cosSetSize(int idx , int  newW , int newH) {
     costums [idx].w = newW ;
     costums [idx].h = newH ;
 }
+
 
 
 // flipes
@@ -403,7 +397,7 @@ void Pen(int idx , int cx , int cy, SDL_Color color , int r) {
     }
     SDL_Surface* s = c->surface;
     SDL_LockSurface(s);
-    UINT32 pixel  = colorToPixel(s, color);
+    Uint32 pixel  = colorToPixel(s, color);
     int r2 = r*r ;
     for (int dy = -r ; dy <= r ; dy++) {
         for (int dx = -r ; dx <= r ; dx++) {
@@ -456,7 +450,7 @@ void Fill(int idx , int cx , int cy , SDL_Color color , int r ) {
         return ;
     }
     SDL_LockSurface(s);
-    UINT32 target = get_pixel32(s,cx,cy) ;
+    Uint32 target = get_pixel32(s,cx,cy) ;
     Uint32 newpixel = colorToPixel( s , color) ;
     if (target == newpixel) {
         SDL_UnlockSurface(s);
@@ -582,3 +576,14 @@ int  SavetoFile(int idx , const char* filepath ) {
     }
     return 1 ;
 }
+
+
+
+int costgetSIZE(int idx , int * outW , int * outH ) {
+    if (idx < 0 || idx >= counter) return 0;
+    if (!outW || !outH) return 0;
+    *outW = costums[idx].w;
+    *outH = costums[idx].h;
+    return 1;
+}
+

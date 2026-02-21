@@ -7,9 +7,7 @@
 
 #include <bits/stdc++.h>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL2_gfx.h>
+
 
 using namespace std ;
 
@@ -28,7 +26,7 @@ void drawLayerPresent(SDL_Renderer * renderer) ;
 void drawLineOneLayer(SDL_Renderer * renderer , int x1 , int y1 , int x2 , int y2 ,SDL_Color color , int Size ) ;
 
 // copy one dst on tex
-void stampOneLayer(SDL_Renderer * renderer , SDL_Texture * spriteText , SDL_Rect*  dst) ;
+void stampOneLayer(SDL_Renderer * renderer , SDL_Texture * spriteText , const SDL_Rect*  dst) ;
 
 void freeDrawLayer();
 

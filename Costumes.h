@@ -7,10 +7,8 @@
 
 #include <bits/stdc++.h>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL2_gfx.h>
-#include  <bits/stdc++.h>
+#include <SDL2/SDL_image.h>
 using namespace std ;
 
 #define MAX_COSTUMES    70
