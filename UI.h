@@ -13,6 +13,17 @@
 
 using namespace std ;
 
+enum {
+    coNone = 0 ,
+    coPen ,
+    coEraser ,
+    coFill ,
+    coText ,
+    coLine ,
+};
+
+void uiInitCostButt() ;
+
 
 void haveUI(SDL_Renderer * renderer, int w , int h);
 
@@ -27,4 +38,10 @@ int uiIsOk() ;
 void addButton (int x,int y ,int w ,int h , const char* id , const char * text) ;
 
 void Shutdown();
+
+void uiCostum() ;
+int uiCostumGET() ;
+void uiCostumSET(int tool) ;
+
+
 #endif //PROJECT_SCRATCH_UI_H

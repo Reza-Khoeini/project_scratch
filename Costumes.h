@@ -50,7 +50,7 @@ void Selct(int idx) ;
 int getSelect() ;
 
 void costSetPosi(int idx , int x , int y) ;
-void cosSetSize(int idx , int  newW , int newH);
+
 
 //  تغییر افقی و عمودی
 
@@ -78,5 +78,12 @@ int  SavetoFile(int idx , const char* filepath ) ;
 void GetPreviwRect(SDL_Rect * rect) ;
 void GetEditRect(SDL_Rect * rect) ;
 
+
+
+int costgetSIZE(int idx , int * outW , int * outH );
+void cosSetSize(int idx , int  newW , int newH);
+
+//  محل نمایش تصویر در ادیتور
+void costGETEDIimg(int idx , SDL_Rect * outdst) ;
 
 #endif //PROJECT_SCRATCH_COSTUMES_H

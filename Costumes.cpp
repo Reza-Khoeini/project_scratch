@@ -332,6 +332,40 @@ void drawEditorPlace(SDL_Renderer * renderer) {
     //
 }
 
+void costGETEDIimg(int idx , SDL_Rect * outdst) {
+
+    if (!outdst) {
+        return ;
+    }
+    //  محاسبات عینا شبیه  drawEditorPlace
+
+    int ex = (windowW - EditorW) / 2 ;
+    int  ey = ( windowH - EditorH) / 2 ;
+    outdst->x = ex  ;
+    outdst->y = ey ;
+    outdst->w = EditorW ;
+    outdst->h = EditorH ;
+    if (idx < 0 || idx >= counter) {
+        return ;
+    }
+    Custome* c =&costums [idx] ;
+    if (!c->texture) {
+        return ;
+    }
+    float sx =  (float )EditorW / (float )c->w;
+    float sy =  (float )EditorH / (float )c->h ;
+    float s = sx < sy ? sx : sy ;
+    int dw = (int)(c->w * s);
+    int dh = (int)(c->h * s);
+    int dx = ex + (EditorW - dw ) / 2 ;
+    int dy = ey + (EditorH - dh ) / 2 ;
+    outdst->x = dx;
+    outdst->y = dy;
+    outdst->w = EditorW ;
+    outdst->h = EditorH ;
+}
+
+
 //  ارتباط با موس
 void GetPreviwRect(SDL_Rect * rect) {
     if (!rect) {

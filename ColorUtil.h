@@ -14,6 +14,4 @@ using namespace std ;
 
 SDL_Color changeColorSlow();
 
-
-
 #endif //PROJECT_SCRATCH_COLORUTIL_H
