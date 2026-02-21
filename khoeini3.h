@@ -13,6 +13,8 @@
 #include <cstring>
 #include <cmath>
 #include <cstdlib>
+
+#include "khoeini2.h"
 #ifndef max_block_of_looks
 #define max_block_of_looks 512
 #endif
@@ -50,7 +52,7 @@ static inline double looks_clamp_f(float v,float min,float max) {
 static inline int looks_clamp_i(float v,float min,float max) {
     return(v<min)?min:(v>max)?max:v;
 }
-static inline double looks_(double v) {
+static inline double looks_absf(double v) {
     return (v<0.0)?-v:v;
 }
 static inline bool is_cursor_in_rect(int x,int y,const SDL_Rect& r) {
@@ -355,7 +357,7 @@ struct  app_looks{
     int edit_block;
     int edit_field;
     bool is_num_edit;
-    bool dropdown_on;
+    bool dropdown_open;
     int dropdown_block;
     int dropdown_field;
     SDL_Rect button_run;
@@ -824,7 +826,639 @@ static inline void rebuild_palette(app_looks* app) {
     add_item(block_swich_backdrop_looks,44);
     add_item(block_next_backdrop_looks,44);
     y+=6;
+    add_item(block_change_size_looks,44);
+    add_item(block_set_size_looks,44);
+    y+=6;
+    add_item(block_change_color_effect_looks,44);
+    add_item(block_set_color_effect_looks,44);
+    add_item(block_clear_color_effect_looks,44);
+    y+=6;
+    add_item(block_show_looks,44);
+    add_item(block_hide_looks,44);
+    y+=6;
+    add_item(block_go_front_l_looks,44);
+    add_item(block_go_back_l_looks,44);
+    add_item(block_go_forward_l_looks,44);
+    add_item(block_go_backward_l_looks,44);
+    y+=12;
+    add_item(block_report_costume_looks,28);
+    add_item(block_report_backdrop_looks,28);
+    add_item(block_report_size_looks,28);
 }
+static inline void draw_input_box_looks(SDL_Renderer* ren,const SDL_Rect& r,SDL_Color bg,SDL_Color bord,const char* text,bool active) {
+    draw_filled_rounded_rect_for_looks(ren,r,6,bg);
+    draw_rounded_rect_outline_for_looks(ren,r,6,active?looks_rgb(255,255,255):bord);
+    draw_text_for_looks(ren,r.x+6,r.y+6,text?text:"",1,looks_rgb(20,20,20));
+}
+static inline void format_number_looks(char* out,size_t outsz,float v) {
+    if (!out||outsz==0)return;
+    float iv=std::round(v);
+    if (looks_absf(v-iv)<0.001f)std::snprintf(out,outsz,"%d",(int)iv);
+    else std::sprintf(out,outsz,"%.2f",v);
+}
+static inline const char* block_title_looks(block_type_looks t) {
+    switch (t) {
+        case block_say_looks:return "say";
+        case block_say_secs_looks:return "say";
+        case block_think_looks:return "think";
+        case block_think_secs_looks:return "think";
+        case block_swich_costume_looks:return "switch costume to";
+        case block_next_costume_looks:return "next costume";
+        case block_swich_backdrop_looks:return "switch backdrop to";
+        case block_next_backdrop_looks:return "next backdrop";
+        case block_change_size_looks:return "change size by";
+        case block_set_size_looks:return "set size to";
+        case block_change_color_effect_looks:return "change color effect by";
+        case block_set_color_effect_looks:return "set color effect to";
+            case block_clear_color_effect_looks:return "clear graphic effects";
+            case block_show_looks:return "show";
+            case block_hide_looks:return "hide";
+            case block_go_front_l_looks:return "go to front layer";
+            case block_go_back_l_looks:return "go to back layer";
+            case block_go_forward_l_looks:return "go forward";
+            case block_go_backward_l_looks:return "go backward";
+            case block_report_costume_looks:return "costume";
+            case block_report_size_looks:return "size";
+            case block_report_backdrop_looks:return "backdrop";
+            default: return"";
+    }
+}
+static inline void draw_stack_block_looks(SDL_Renderer* ren,const app_looks* app,const block_looks& b,bool selected) {
+    SDL_Color fill=app->looks_color;
+    SDL_Color outline=app->looks_outline;
+    SDL_Color bg=app->back_ground;
+    SDL_Rect r{(int)b.x,(int)b.y,(int)b.w,(int)b.h};
+    SDL_Rect tab{r.x+34,r.y+r.h-2,64,10};
+    draw_filled_rounded_rect_for_looks(ren,r,10,fill);
+    draw_filled_rounded_rect_for_looks(reb,tab,5,fill);
+    SDL_Rect notch{r.x+36,r.y-1,56,9};
+    draw_filled_rounded_rect_for_looks(ren,notch,4,bg);
+    draw_rounded_rect_outline_for_looks(ren,r,10,selected?app->highlight:outline);
+    draw_rounded_rect_outline_for_looks(ren,tab,5,selected?app->highlight:outline);
+    const int tx=r.x+12;
+    const int ty=r.y+14;
+    char numbuf[32];
+    switch(b.type) {
+        case block_say_looks:
+        draw_text_for_looks(ren,tx,ty,"say",1,app->text);
+        break;
+        case block_say_secs_looks:
+        draw_text_for_looks(ren,tx,ty,"say",1,app->text);
+        draw_text_for_looks(ren,r.x+208,ty,"for",1,app->text);
+        draw_text_for_looks(ren,r.x+276,ty,"secs",1,app->text);
+        break;
+        case block_think_looks:
+        draw_text_for_looks(ren,tx,ty,"think",1,app->text);
+        break;
+        case block_think_secs_looks:
+            draw_text_for_looks(ren,tx,ty,"think",1,app->text);
+            draw_text_for_looks(ren,r.x+230,ty,"for",1,app->text);
+            draw_text_for_looks(ren,r.x+296,ty,"secs",1,app->text);
+            break;
+            case block_swich_costume_looks:
+            draw_text_for_looks(ren,tx,ty,"switch costume to",1,app->text);
+            break;
+            case block_next_costume_looks:
+            draw_text_for_looks(ren,tx,ty,"next costume",1,app->text);
+            break;
+            case block_swich_backdrop_looks:
+            draw_text_for_looks(ren,tx,ty,"switch backdrop to",1,app->text);
+            break;
+            case block_next_backdrop_looks:
+            draw_text_for_looks(ren,tx,ty,"next backdrop",1,app->text);
+            break;
+            case block_change_size_looks:
+            draw_text_for_looks(ren,tx,ty,"change size by",1,app->text);
+            break;
+            case block_set_size_looks:
+            draw_text_for_looks(ren,tx,ty,"set size to",1,app->text);
+            draw_text_for_looks(ren,r.x+r.w-26,ty,"%",1,app->text);
+            break;
+            case block_change_color_effect_looks:
+            draw_text_for_looks(ren,tx,ty,"change color effect by",1,app->text);
+            break;
+            case block_set_color_effect_looks:
+            draw_text_for_looks(ren,tx,ty,"set color effect to",1,app->text);
+            break;
+        case block_clear_color_effect_looks:
+            draw_text_for_looks(ren,tx,ty,"clear graphic effect to",1,app->text);
+            break;
+        case block_show_looks:
+            draw_text_for_looks(ren,tx,ty,"show",1,app->text);
+            break;
+            case block_hide_looks:
+            draw_text_for_looks(ren,tx,ty,"hide",1,app->text);
+            break;
+        case block_go_front_l_looks:
+            draw_text_for_looks(ren,tx,ty,"go front layer",1,app->text);
+            break;
+            case block_go_back_l_looks:
+            draw_text_for_looks(ren,tx,ty,"go to back layer",1,app->text);
+            break;
+            case block_go_forward_l_looks:
+            draw_text_for_looks(ren,tx,ty,"go forward",1,app->text);
+            draw_text_for_looks(ren,r.x+r.w-56,ty,"layers",1,app->text);
+            break;
+            case block_go_backward_l_looks:
+            draw_text_for_looks(ren,tx,ty,"go backward",1,app->text);
+            draw_text_for_looks(ren,r.x-r.w-56,ty,"layers",1,app->text);
+            break;
+            default:break;
+    }
+    for (int i=0;i<b.field_count;i++) {
+        const field_looks& f=b.field[i];
+        SDL_Rect fr{r.x +f.rect.x,r.y+f.rect.y,f.rect.w,f.rect.h};
+        bool active=(app->text_input_on&&app->edit_block==b.id&&app->edit_field==i);
+        bool ddActive=(app->dropdown_open&&app->dropdown_block==b.id&&app->dropdown_field==i);
+        if (f.type==field_text_looks) {
+            draw_input_box_looks(ren,fr,app->input_bg,app->input_border,f.text,active);
+        } else if (f.type==field_number_looks){
+            format_number_looks(numbuf,sizeof(numbuf),f.number);
+            draw_input_box_looks(ren,fr,app->input_bg,app->input_border,numbuf,active);
+        } else if (f.type==field_dropdown_looks) {
+            char label[max_name_of_looks]="none";
+            if (b.type==block_swich_costume_looks&&app->sprite_count>0) {
+                const sprite_looks& sp=app->sprite[app->active_sprite];
+                if (sp.costume_count>0) {
+                    int idx=looks_clamp_i(f.dropdown_index,0,sp.costume_count-1);
+                    std::snprintf(label,sizeof(label),"%s",sp.costume[idx].name);
+                }
+            } else if (b.type==block_swich_backdrop_looks&&app->stage.backdropCount>0) {
+                int idx=looks_clamp_i(f.dropdown_index,0,app->stage.backdrop_count-1);
+                std::snprintf(label,sizeof(label),"%s",app->stage.backdrop[idx].name);
+            }
+            draw_input_box_looks(ren,fr,app->input_bg,app->input_border,label,ddActive);
+            set_draw_color(ren,looks_rgb(50,50,50));
+            SDL_RenderDrawLine(ren,fr.x+fr.w-10,fr.y+8,fr.x+fr.w-4,fr.y+8);
+            SDL_RenderDrawLine(ren,fr.x+fr.w-9,fr.y+9,fr.x+fr.w-5,fr.y+9);
+        }
+    }
+}
+static inline void draw_reporter_block_looks(SDL_Renderer* ren,const app_looks* app,const block_looks& b,bool selected) {
+    SDL_Color fill=looks_rgb(150,110,255);
+    SDL_Rect r{(int)b.x,(int)b.y,(int)b.w,(int)b.h};
+    draw_filled_rounded_rect_for_looks(ren,r,14,fill);
+    draw_rounded_rect_outline_for_looks(ren,r,14,selected?app->highlight:app->looks_outline);
+    const char* t=block_title_looks(b.type);
+    draw_text_for_looks(ren,r.x+10,r.y+9,t,1,app->text);
+}
+static inline void draw_block_looks(SDL_Renderer* ren,const app_looks& app,const block_looks& b,bool selected) {
+    if (block_is_reporter(b.type))draw_reporter_block_looks(ren,app,b,selected);
+    else {
+        draw_stack_block_looks(ren,app,b,selected);
+    }
+}
+ static inline  void draw_dropdown_looks(SDL_Renderer* ren,app_looks* app) {
+    if (!app||!app->dropdown_open)return;
+    if (app->dropdown_block<0||app->dropdown_block>=max_block_of_looks)return;
+    block_looks& b=app->block[app->dropdown_block];
+    if (!b.use)return;
+    if (app->dropdown_field<0||app->dropdown_field>=b.field_count)return;
+    field_looks& f=b.field[app->dropdown_field];
+    if (f.type!=field_dropdown_looks) return;
+    SDL_Rect br{(int)b.x,(int)b.y,(int)b.w,(int)b.h};
+    SDL_Rect fr{br.x+f.rect.x,br.y+f.rect.y,f.rect.w,f.rect.h};
+    const char* items[max_costumes_of_looks];
+    int count=0;
+    if (b.type==block_swich_costume_looks&&app->sprite_count>0) {
+        const sprite_looks& sp=app->sprite[app->active_sprite];
+        count=sp.costume_count;
+        for (int i=0;i<count;i++) {
+            items[i]=sp.costume[i].name;
+        }
+    }else if (b.type==block_swich_backdrop_looks) {
+        count=app->stage.backdrop_count;
+        for (int i=0;i<count;i++) {
+            items[i]=app->stage.backdrop[i].name;
+        }
+    }
+    if (count<=0)return;
+    const int item_h=22;
+    SDL_Rect list{fr.x,fr.y+fr.h+2,fr.w,item_h*count};
+    draw_filled_rounded_rect_for_looks(ren,list,6,looks_rgb(245,245,245));
+    draw_rounded_rect_outline_for_looks(ren,list,6,looks_rgb(90,90,90));
+    for (int i=0;i<count;i++) {
+        SDL_Rect it{list.x,list.y+i*item_h,list.w,item_h};
+        bool hover=is_cursor_in_rect(app->mouse_x,app->mouse_y,it);
+        if (hover){
+            set_draw_color(ren,looks_rgb(220,220,220));
+            SDL_RenderFillRect(ren,&it);
+        }
+        draw_text_for_looks(ren,it.x+6,it.y+7,items[i],1,looks_rgb(20,20,20));
+    }
+}
+static inline void hsv_to_rgb_looks(float h_deg,float s,float v,uint8_t& outR,uint8_t& outG,uint8_t& outB) {
+    float h=std::fmod(h_deg,360.0f);
+    if (h<0)h+=360.0f;
+    float c=v*s;
+    float x=c*(1.0f-std::fabs(std::fmod(h/60.0f,2.0f)-1.0f));
+    float m=v-c;
+    float r=0,g=0,b=0;
+    if (h<60) {
+        r=c;
+        g=x;
+        b=0;
+    }
+    else if (h<120) {
+        r=x;
+        g=c;
+        b=0;
+    }
+    else if (h<180) {
+        r=0;
+        g=c;
+        b=x;
+    }
+    else if (h<240) {
+        r=0;
+        g=x;
+        b=c;
+    }
+    else if (h<300) {
+        r=x;
+        g=0;
+        b=c;
+    }
+    else {
+        r=c;
+        g=0;
+        b=x;
+    }
+    outR=(uint8_t)looks_clamp_i((int)std::round((r+m)*255.0f),0,255);
+    outG=(uint8_t)looks_clamp_i((int)std::round((g+m)*255.0f),0,255);
+    outB=(uint8_t)looks_clamp_i((int)std::round((b+m)*255.0f),0,255);
+}
+static inline void stage_to_screen_looks(const app_looks* app,float sx,float sy,int& outX,int& outY) {
+    const SDL_Rect& R=app->stage_p;
+    float scaleX=(float)R.w/(float)max_stage_width_of_looks;
+    float scaleY=(float)R.h/(float)max_stage_hight_of_looks;
+    outX =(int)std::round(R.x+R.w*0.5f+sx*scaleX);
+    outY =(int)std::round(R.y+R.h*0.5f-sy*scaleY);
+}
+static inline void draw_bubble_looks(SDL_Renderer* ren,const app_looks* app,int spriteIdx) {
+     const sprite_looks&sp=app->sprite[spriteIdx];
+    if (sp.bubble_type==bubble_none_looks) return;
+    if (sp.bubble_text[0]=='\0') return;
+    int px,py;
+    stage_to_screen_looks(app,sp.x,sp.y,px,py);
+    int len=(int)std::strlen(sp.bubbleText);
+    int w=looks_clamp_i(80+len*6,90,260);
+    int h=40;
+    SDL_Rect bubble {px+30,py-70,w,h};
+    if (bubble.x+bubble.w>app->stage_p.x+app->stage_p.w) bubble.x=app->stage_p.x+app->stage_p.w-bubble.w-6;
+    if (bubble.y<app->stage_p.y)bubble.y=app->stage_p.y+6;
+    draw_filled_rounded_rect_for_looks(ren,bubble,12,looks_rgb(255,255,255));
+    draw_rounded_rect_outline_for_looks(ren,bubble,12,looks_rgb(30,30,30));
+    draw_text_for_looks(ren,bubble.x+10,bubble.y+14,sp.bubbleText,1,looks_rgb(10,10,10));
+    if (sp.bubbleType==bubble_say_looks) {
+        SDL_Point p1 {px+18,py-20};
+        SDL_Point p2 {bubble.x+20,bubble.y+bubble.h};
+        SDL_Point p3 {bubble.x+44,bubble.y+bubble.h};
+        set_draw_color(ren,looks_rgb(255,255,255));
+        for (int y=0;y<18;y++) {
+            int x1=(int)std::round(p1.x+(p2.x-p1.x)*(y/18.0f));
+            int x2=(int)std::round(p1.x+(p3.x-p1.x)*(y/18.0f));
+            SDL_RenderDrawLine(ren,x1,p1.y+y,x2,p1.y+y);
+        }
+        set_draw_color(ren,looks_rgb(30,30,30));
+        SDL_RenderDrawLine(ren,p1.x,p1.y,p2.x,p2.y);
+        SDL_RenderDrawLine(ren,p1.x,p1.y,p3.x,p3.y);
+        SDL_RenderDrawLine(ren,p2.x,p2.y,p3.x,p3.y);
+    } else {
+        SDL_Color c=looks_rgb(255,255,255);
+        SDL_Color o=looks_rgb(30,30,30);
+        auto circle=[&](int cx,int cy,int rad){
+            set_draw_color(ren,c);
+            for (int dy=-rad;dy<=rad;dy++) {
+                for (int dx=-rad;dx<=rad;dx++) {
+                    if (dx*dx+dy*dy<=rad*rad)SDL_RenderDrawPoint(ren,cx+dx,cy+dy);
+                }
+            }
+            set_draw_color(ren,o);
+            for (int ang=0;ang<360;ang+=12) {
+                float a=ang*3.14159265f/180.0f;
+                int dx=(int)std::round(std::cos(a)*rad);
+                int dy=(int)std::round(std::sin(a)*rad);
+                SDL_RenderDrawPoint(ren,cx+dx,cy+dy);
+            }
+        };
+        circle(px+22,py-14,6);
+        circle(px+30,py-26,5);
+        circle(px+40,py-38,4);
+    }
+}
+static inline void render_stage_looks(app_looks* app) {
+    if (!app) return;
+    SDL_Renderer* ren=app->ren;
+    draw_filled_rounded_rect_for_looks(ren,app->stage_p,10,looks_rgb(245,245,250));
+    draw_rounded_rect_outline_for_looks(ren,app->stage_p,10,looks_rgb(150,150,160));
+    if (app->stage.backdrop_count>0) {
+        int bi=looks_clamp_i(app->stage.backdrop_index,0,app->stage.backdrop_count-1);
+        SDL_Texture* tex =app->stage.backdrops[bi].tex;
+        if (tex) {
+            SDL_Rect dst=app->stage_p;
+            SDL_RenderCopy(ren,tex,nullptr,&dst);
+        }
+    }else {
+        set_draw_color(ren,looks_rgb(220,220,230));
+        SDL_RenderFillRect(ren,&app->stage_p);
+    }
+    for (int oi=app->sprite_count-1;oi>=0;oi--) {
+        int si=app->sprite_order[oi];
+        if(si<0||si>=app->sprite_count)continue;
+        sprite_looks& sp=app->sprite[si];
+        if (!sp.visible)continue;
+        if (sp.costume_count<=0)continue;
+        int ci=looks_clamp_i(sp.costume_index,0,sp.costume_count-1);
+        SDL_Texture* tex =sp.costume[ci].tex;
+        if (!tex) continue;
+        int px,py;
+        stage_to_screen_looks(app,sp.x,sp.y,px,py);
+        float scaleX=(float)app->stage_p.w/(float)max_stage_width_of_looks;
+        float scaleY=(float)app->stage_p.h/(float)max_stage_hight_of_looks;
+        float sc=(sp.size_per/100.0f);
+        int dw=(int)std::round(sp.costume[ci].w * sc* scaleX);
+        int dh=(int)std::round(sp.costume[ci].h *sc* scaleY);
+        SDL_Rect dst {px-dw/2,py-dh/2,dw,dh};
+        uint8_t tr=255,tg=255,tb=255;
+        float hue=(sp.color_effect/200.0f)*360.0f;
+        if (looks_absf(sp.color_effect)>0.001f)hsv_to_rgb_looks(hue,0.9f,1.0f,tr,tg,tb);
+        SDL_SetTextureColorMod(tex,tr,tg,tb);
+        SDL_SetTextureAlphaMod(tex,sp.alph);
+        SDL_RenderCopy(ren,tex,nullptr,&dst);
+        SDL_SetTextureColorMod(tex,255,255,255);
+        SDL_SetTextureAlphaMod(tex,255);
+        if (si==app->active_sprite) {
+            set_draw_color(ren,looks_rgb(0,160,255));
+            SDL_Rect outline=dst;
+            SDL_RenderDrawRect(ren,&outline);
+        }
+    }
+    for (int oi=app->sprite_count-1;oi>=0;oi--) {
+        int si=app->sprite_order[oi];
+        if (si<0||si>=app->sprite_count) continue;
+        draw_bubble_looks(ren,app,si);
+    }
 
+    int mx=app->stage_p.x+app->stage.watch_x;
+    int my=app->stage_p.y+app->stage.watch_y;
+    auto draw_monitor=[&](const char* label,const char* value){
+        SDL_Rect r {mx,my,190,28};
+        draw_filled_rounded_rect_for_looks(ren,r,8,looks_rgb(255,255,210));
+        draw_rounded_rect_outline_for_looks(ren,r,8,looks_rgb(120,120,90));
+        draw_text_for_looks(ren,r.x+8,r.y+9,label,1,looks_rgb(40,40,20));
+        draw_text_for_looks(ren,r.x+86,r.y+9,value,1,looks_rgb(40,40,20));
+        my+=32;
+    };
+    char val[64];
+    if (app->stage.watch_backdrop) {
+        if (app->stage.backdrop_count>0) {
+            int bi=looks_clamp_i(app->stage.backdrop_index,0,app->stage.backdrop_count-1);
+            std::snprintf(val,sizeof(val),"%d %s",bi+1,app->stage.backdrop[bi].name);
+        } else std::snprintf(val,sizeof(val),"none");
+        draw_monitor("Backdrop:",val);
+    }
+    if (app->stage.watch_costume) {
+        if (app->sprite_count>0) {
+            const sprite_looks& sp=app->sprite[app->active_sprite];
+            if (sp.costume_count>0) {
+                int ci=looks_clamp_i(sp.costume_index,0,sp.costume_count-1);
+                std::snprintf(val,sizeof(val),"%d %s",ci+1,sp.costume[ci].name);
+            } else std::snprintf(val,sizeof(val),"none");
+        } else std::snprintf(val,sizeof(val),"none");
+        draw_monitor("Costume:",val);
+    }
+    if (app->stage.watch_size) {
+        if (app->sprite_count>0) {
+            std::snprintf(val,sizeof(val),"%.0f%%",app->sprite[app->active_sprite].size_per);
+        } else std::snprintf(val,sizeof(val),"0%%");
+        draw_monitor("Size:",val);
+    }
+    SDL_Rect sprPanel {app->stage_p.x,app->stage_p.y+app->stage_p.h-84,app->stage_p.w,84};
+    set_draw_color(ren,looks_rgb(245,245,250));
+    SDL_RenderFillRect(ren,&sprPanel);
+    set_draw_color(ren,looks_rgb(180,180,190));
+    SDL_RenderDrawLine(ren,sprPanel.x,sprPanel.y,sprPanel.x+sprPanel.w,sprPanel.y);
+    draw_text_for_looks(ren,sprPanel.x+10,sprPanel.y+10,"Sprites:",1,looks_rgb(40,40,50));
+    int bx=sprPanel.x+10;
+    int by=sprPanel.y+28;
+    for (int i=0;i<app->sprite_count;i++) {
+        SDL_Rect btn{bx,by,100,22};
+        bool act=(i==app->active_sprite);
+       draw_filled_rounded_rect_for_looks(ren,btn,6,act?looks_rgb(210,235,255) : looks_rgb(240,240,245));
+        draw_rounded_rect_outline_for_looks(ren,btn,6,looks_rgb(150,150,160));
+        draw_text_for_looks(ren,btn.x+6,btn.y+7,app->sprite[i].name,1,looks_rgb(30,30,40));
+        bx+=110;
+        if (bx+100>sprPanel.x+sprPanel.w){
+            bx=sprPanel.x+10;
+            by+=26;
+        }
+    }
+}
+static inline void set_bubble_looks(app_looks* app,int spriteIdx,bubble_type_looks t,const char* msg,uint32_t now,float secondsOr0) {
+    if (!app) return;
+    if (spriteIdx<0||spriteIdx>=app->sprite_count) return;
+    sprite_looks& sp=app->sprite[spriteIdx];
+    sp.bubble_type=t;
+    safe_str_cpy_looks(sp.bubble_text,sizeof(sp.bubble_text),msg?msg:"");
+    if (secondsOr0>0.0f)sp.bubble_exp_ms=now+(uint32_t)std::round(secondsOr0*1000.0f);
+    else sp.bubble_exp_ms=0;
+}
+static inline void clear_bubble_if_expired_looks(app_looks* app,uint32_t now) {
+    if (!app) return;
+    for (int i=0;i<app->sprite_count;i++) {
+        sprite_looks&sp=app->sprite[i];
+        if (sp.bubble_exp_ms!=0&&now>=sp.bubble_exp_ms) {
+            sp.bubble_type=bubble_none_looks;
+            sp.bubble_text[0]='\0';
+            sp.bubble_exp_ms=0;
+        }
+    }
+}
+static inline void move_sprite_order_looks(app_looks* app,int spriteIdx,int newPosFrontIndex0) {
+    if (!app) return;
+    int n=app->sprite_count;
+    newPosFrontIndex0=looks_clamp_i(newPosFrontIndex0,0,n-1);
+    int cur=-1;
+    for (int i=0;i<n;i++) if (app->sprite_order[i]==spriteIdx) {
+        cur=i;
+        break;
+    }
+    if (cur<0||cur==newPosFrontIndex0)return;
+    int tmp=app->sprite_order[cur];
+    if (cur<newPosFrontIndex0) {
+        for (inti=cur;i<newPosFrontIndex0;i++)app->sprite_order[i]=app->sprite_order[i+1];
+    } else {
+        for (int i=cur;i>newPosFrontIndex0;i--)app->sprite_order[i]=app->sprite_order[i-1];
+    }
+    app->sprite_order[newPosFrontIndex0]=tmp;
+}
+static inline void exec_block_looks(app_looks* app,int blockIdx,int threadIdx,uint32_t now) {
+    (void)threadIdx;
+    if (!app) return;
+    if (blockIdx<0||blockIdx>=max_block_of_looks) return;
+    block_looks&b=app->block[blockIdx];
+    if (!b.use) return;
+    int sidx=looks_clamp_i(app->active_sprite,0,(app->sprite_count>0?app->sprite_count-1:0));
+    auto num0=[&]()->float {return (b.field_count>=1&&b.field[0].type==field_number_looks)?b.field[0].number:0.0f;};
+    auto num1=[&]()->float { return(b.field_count>=2&&b.field[1].type==field_number_looks)?b.field[1].number:0.0f;};
+    switch (b.type) {
+        case block_say_looks:
+            if (app->sprite_count>0) set_bubble_looks(app,sidx,bubble_say_looks,b.field[0].text,now,0.0f);
+            break;
+        case block_say_secs_looks:
+            if (app->sprite_count>0) set_bubble_looks(app,sidx,bubble_say_looks,b.field[0].text, now, num1());
+            app->thread[threadIdx].wait_until=now+(uint32_t)std::round(num1()*1000.0f);
+            break;
+        case block_think_looks:
+            if (app->sprite_count>0) set_bubble_looks(app,sidx,bubble_say_looks,b.field[0].text, now, 0.0f);
+            break;
+        case block_think_secs_looks:
+            if (app->sprite_count>0) set_bubble_looks(app, sidx,bubble_say_looks,b.field[0].text, now, num1());
+            app->thread[threadIdx].wait_until=now+(uint32_t)std::round(num1()*1000.0f);
+            break;
+
+        case block_swich_costume_looks:
+            if (app->sprite_count>0) {
+                sprite_looks& sp=app->sprite[sidx];
+                if (sp.costume_count>0) sp.costume_index=looks_clamp_i(b.field[0].dropdown_index,0,sp.costume_count-1);
+            }
+            break;
+        case block_next_costume_looks:
+            if (app->sprite_count>0) {
+                sprite_looks& sp=app->sprite[sidx];
+                if (sp.costume_count>0) sp.costume_index=(sp.costume_index+1)%sp.costume_count;
+            }
+            break;
+        case block_swich_backdrop_looks:
+            if (app->stage.backdrop_count>0)app->stage.backdrop_index=looks_clamp_i(b.field[0].dropdown_index,0,app->stage.backdrop_count-1);
+            break;
+        case block_next_backdrop_looks:
+            if (app->stage.backdrop_count>0) app->stage.backdrop_index=(app->stage.backdrop_index+1)%app->stage.backdrop_count;
+            break;
+        case block_change_size_looks:
+            if (app->sprite_count>0) {
+                sprite_looks& sp=app->sprite[sidx];
+                sp.size_per=looks_clamp_f(sp.size_per+num0(),5.0f,500.0f);
+            }
+            break;
+        case block_set_size_looks:
+            if (app->sprite_count>0) {
+                sprite_looks& sp=app->sprite[sidx];
+                sp.size_per=looks_clamp_f(num0(),5.0f,500.0f);
+            }
+            break;
+        case block_change_color_effect_looks:
+            if (app->sprite_count>0) {
+                sprite_looks& sp=app->sprite[sidx];
+                sp.color_effect+=num0();
+                while (sp.color_effect<0.0f) sp.color_effect+=200.0f;
+                while (sp.color_effect>200.0f) sp.color_effect-=200.0f;
+            }
+            break;
+        case block_set_color_effect_looks:
+            if (app->sprite_count>0) {
+                sprite_looks& sp=app->sprite[sidx];
+                sp.color_effect=num0();
+                while (sp.color_effect<0.0f) sp.color_effect+=200.0f;
+                while (sp.color_effect>200.0f) sp.color_effect-=200.0f;
+            }
+            break;
+        case block_clear_color_effect_looks:
+            if (app->sprite_count>0) {
+                sprite_looks& sp=app->sprite[sidx];
+                sp.color_effect=0.0f;
+                sp.alph=255;
+            }
+            break;
+        case block_show_looks:
+            if (app->sprite_count>0) app->sprite[sidx].visible = true;
+            break;
+        case block_hide_looks:
+            if (app->sprite_count>0) app->sprite[sidx].visible = false;
+            break;
+        case block_go_front_l_looks:
+            if (app->sprite_count>0) move_sprite_order_looks(app,sidx,0);
+            break;
+        case block_go_back_l_looks:
+            if (app->sprite_count>0) move_sprite_order_looks(app,sidx,app->sprite_count-1);
+            break;
+        case block_go_forward_l_looks:
+            if (app->sprite_count>0) {
+                int cur=-1;
+                for (int i=0;i<app->sprite_count;i++) if (app->sprite_order[i]==sidx) {
+                    cur=i;break;
+                }
+                int step=(int)std::round(num0());
+                move_sprite_order_looks(app,sidx,cur-step);
+            }
+            break;
+        case block_go_backward_l_looks:
+            if (app->sprite_count>0) {
+                int cur=-1;
+                for (int i=0; i<app->sprit_count;i++) {
+                    if (app->sprite_order[i]==sidx) {
+                        cur=i;break;
+                    }
+                }
+                int step=(int)std::round(num0());
+                move_sprite_order_looks(app,sidx,cur+step);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+static inline void Looks_StartRun(app_looks* app) {
+    if (!app) return;
+    app->running=true;
+    app->thread_count=0;
+    for (int i=0;i<max_block_of_looks;i++) {
+        if (!app->block[i].use) continue;
+        block_looks& b=app->block[i];
+        if (!block_is_stack(b.type)) continue;
+        if (b.prev!=-1) continue;
+        if (app->thread_count>=max_threads_of_looks) break;
+        app->thread[app->thread_count++]=thread_looks{true,i,0};
+    }
+    if (app->thread_count==0) app->running=false;
+}
+static inline void stop_run_looks(app_looks* app) {
+    if (!app) return;
+    app->running=false;
+    for (int i=0;i<app->thread_count;i++) app->thread[i].ali=false;
+    app->thread_count=0;
+}
+static inline void begin_text_input_looks(app_looks* app,int blockIdx,int fieldIdx,bool isNumber) {
+    if (!app) return;
+    app->text_input_on=true;
+    app->edit_block=blockIdx;
+    app->edit_field=fieldIdx;
+    app->is_num_edit=isNumber;
+    SDL_StartTextInput();
+}
+static inline void toggle_reporter_watch_looks(app_looks* app,block_type_looks t) {
+    if (!app) return;
+    if (t==block_report_costume_looks) app->stage.watch_costume=!app->stage.watch_costume;
+    else if (t==block_report_backdrop_looks) app->stage.watch_backdrop=!app->stage.watch_backdrop;
+    else if (t==block_report_size_looks) app->stage.watch_size=!app->stage.watch_size;
+}
+static inline void handle_click_stage_sprite_buttons_looks(app_looks* app,int mx,int my) {
+    SDL_Rect sprPanel {app->stage_p.x,app->stage_p.y+app->stage_p.h-84,app->stage_p.w,84 };
+    int bx=sprPanel.x+10;
+    int by=sprPanel.y+28;
+    for (int i=0;i<app->sprite_count;i++) {
+        SDL_Rect btn {bx,by,100,22 };
+        if (is_cursor_in_rect(mx,my,btn)) {
+            app->active_sprite=i;
+            return;
+        }
+        bx+=110;
+        if (bx+100>sprPanel.x+sprPanel.w) {
+            bx=sprPanel.x+10;by+=26;
+        }
+    }
+}
 
 #endif
