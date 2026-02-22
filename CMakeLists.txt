@@ -32,5 +32,6 @@ add_executable(project_scratch main.cpp
         sprite.h
         types.h
         ui1.cpp
-        ui1.h)
+        ui1.h
+        khoeini3.h)
 target_link_libraries(${PROJECT_NAME} -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf -lSDL2_mixer)
