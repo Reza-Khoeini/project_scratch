@@ -5,9 +5,6 @@
 #ifndef PROJECT_SCRATCH_UI_H
 #define PROJECT_SCRATCH_UI_H
 
-
-
-#include "UI.h"
 #include <bits/stdc++.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -16,29 +13,35 @@
 
 using namespace std ;
 
-struct UIButtons {
-    float x , y ;
-    float widgh , height ;
-    bool visible ;
-    bool hovered ;
-
-
+enum {
+    coNone = 0 ,
+    coPen ,
+    coEraser ,
+    coFill ,
+    coText ,
+    coLine ,
 };
-extern UIButtons extensionButton;
-extern bool extensionPanelOpen;
+
+void uiInitCostButt() ;
 
 
-void  drawExtensionButton(SDL_Renderer * renderer);
+void haveUI(SDL_Renderer * renderer, int w , int h);
 
-void drawUI(SDL_Renderer* renderer);
+// void CloseUI() ;
+void  drawUI(SDL_Renderer * renderer);
 
 void handleUIClick(int mouseX, int mouseY);
-
-void drawExtensionPanel(SDL_Renderer* renderer);
-
-bool pointInRect(int x, int y, SDL_Rect rect);
+int uiIsOk() ;
 
 
+
+void addButton (int x,int y ,int w ,int h , const char* id , const char * text) ;
+
+void Shutdown();
+
+void uiCostum() ;
+int uiCostumGET() ;
+void uiCostumSET(int tool) ;
 
 
 #endif //PROJECT_SCRATCH_UI_H
