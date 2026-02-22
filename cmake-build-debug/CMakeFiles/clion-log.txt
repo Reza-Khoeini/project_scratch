@@ -1,0 +1,6 @@
+"C:\Users\asus\Desktop\CLion 2022.2\bin\cmake\win\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - MinGW Makefiles" -S C:\Users\asus\CLionProjects\project_scratch -B C:\Users\asus\CLionProjects\project_scratch\cmake-build-debug
+CMake Error at CMakeLists.txt:1 (cmake_minimum_required):
+  CMake 4.0 or higher is required.  You are running version 3.23.2
+
+
+-- Configuring incomplete, errors occurred!

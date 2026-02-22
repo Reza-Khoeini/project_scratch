@@ -389,8 +389,8 @@ static void render_deadly_display() {
     SDL_Color white{255,255,255,255};
     int total_h=0;
     int max_W=0;
-    vector<int>wide,hight;
-    wide.reserve(deadly_error_text.size());
+    vector<int>width,hight;
+    width.reserve(deadly_error_text.size());
     hight.reserve(deadly_error_text.size());
     for (const auto &line:deadly_error_text) {
         int tw=0;
@@ -399,7 +399,7 @@ static void render_deadly_display() {
         if (d) {
             SDL_DestroyTexture(d);
         }
-        wide.push_back(tw);
+        width.push_back(tw);
         hight.push_back(th);
         total_h+=10+th;
         if (tw>max_W) {
@@ -425,8 +425,4 @@ static void render_deadly_display() {
         }
     }
 }
-
-
-
-
 #endif
