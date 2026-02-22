@@ -1430,6 +1430,14 @@ static inline void stop_run_looks(app_looks* app) {
     for (int i=0;i<app->thread_count;i++) app->thread[i].ali=false;
     app->thread_count=0;
 }
+static inline void end_text_input_looks(app_looks* app) {
+    if (!app) return;
+    if (app->text_input_on) SDL_StopTextInput();
+    app->text_input_on=false;
+    app->edit_block=-1;
+    app->edit_field=-1;
+    app->is_num_edit=false;
+}
 static inline void begin_text_input_looks(app_looks* app,int blockIdx,int fieldIdx,bool isNumber) {
     if (!app) return;
     app->text_input_on=true;
@@ -1460,5 +1468,326 @@ static inline void handle_click_stage_sprite_buttons_looks(app_looks* app,int mx
         }
     }
 }
-
+static inline void handle_dropdown_click_looks(app_looks* app,int mx,int my) {
+    if (!app||!app->dropdown_open) return;
+    int bidx=app->dropdown_block;
+    int fidx=app->dropdown_field;
+    if (bidx<0||bidx>=max_block_of_looks) return;
+    block_looks&b=app->block[bidx];
+    if (!b.use) return;
+    if (fidx<0||fidx>=b.field_count) return;
+    field_looks&f=b.field[fidx];
+    if (f.type!=field_dropdown_looks) return;
+    SDL_Rect br {(int)b.x,(int)b.y,(int)b.w,(int)b.h };
+    SDL_Rect fr {br.x+f.rect.x,br.y+f.rect.y,f.rect.w,f.rect.h };
+    int count=0;
+    if (b.type==block_swich_costume_looks&&app->sprite_count>0)count=app->sprite[app->active_sprite].costume_count;
+    else if (b.type==block_swich_backdrop_looks)count=app->stage.backdrop_count;
+    if (count<=0) {
+        app->dropdown_open=false;
+        return;
+    }
+    const int itemH=22;
+    SDL_Rect list {fr.x,fr.y+fr.h+2,fr.w,itemH *count };
+    if (!is_cursor_in_rect(mx,my,list)) {
+        app->dropdown_open=false;
+        return;
+    }
+    int relY=my-list.y;
+    int idx=relY/itemH;
+    idx = looks_clamp_i(idx,0,count-1);
+    f.dropdown_index=idx;
+    app->dropdown_open=false;
+}
+static inline void Looks_HandleEvent(app_looks* app, const SDL_Event& e) {
+    if (!app) return;
+    if (e.type==SDL_MOUSEMOTION) {
+        app->mouse_x=e.motion.x;
+        app->mouse_y=e.motion.y;
+        if (app->dragging) {
+            float nx=(float)app->mouse_x-app->drag_ox;
+            float ny=(float)app->mouse_y-app->drag_oy;
+            float dx=nx-app->block[app->drag_root].x;
+            float dy=ny-app->block[app->drag_root].y;
+            move_stack_looks(app,app->drag_root,dx,dy);
+        }
+    }
+    if (e.type==SDL_MOUSEBUTTONDOWN&&e.button.button==SDL_BUTTON_LEFT) {
+        app->mouse_down=true;
+        int mx=e.button.x,my=e.button.y;
+        if (app->dropdown_open) {
+            handle_dropdown_click_looks(app,mx,my);
+            return;
+        }
+        if (is_cursor_in_rect(mx,my,app->button_run)) {
+            Looks_StartRun(app);
+            end_text_input_looks(app);
+            return;
+        }
+        if (is_cursor_in_rect(mx,my,app->button_stop)) {
+            stop_run_looks(app);
+            end_text_input_looks(app);
+            return;
+        }
+        if (is_cursor_in_rect(mx,my,app->stage_p)) {
+            handle_click_stage_sprite_buttons_looks(app,mx,my);
+            end_text_input_looks(app);
+            return;
+        }
+        if (is_cursor_in_rect(mx,my,app->palet)) {
+            for (int i=0;i<app->palette_count;i++) {
+                const palet_item_looks& it=app->palette_item[i];
+                if (is_cursor_in_rect(mx,my,it.rect)) {
+                    if (is_cursor_in_rect(it.type)) {
+                        toggle_reporter_watch_looks(app,it.type);
+                    }
+                    block_looks* b=all_oc_block_looks(app,it.type);
+                    if (!b) return;
+                    b->x=(float)mx-b->w*0.3f;
+                    b->y=(float)my-b->h*0.5f;
+                    app->dragging=true;
+                    app->drag_root=b->id;
+                    app->drag_from_pallete=1;
+                    app->drag_ox=(float)mx-b->x;
+                    app->drag_oy=(float)my-b->y;
+                    end_text_input_looks(app);
+                    return;
+                }
+            }
+        }
+        if (is_cursor_in_rect(mx,my,app->workspace)) {
+            int hit=hit_test_block(app,mx,my);
+            if (hit>=0) {
+                block_looks& b=app->block[hit];
+                SDL_Rect br {(int)b.x,(int)b.y,(int)b.w,(int)b.h};
+                bool fieldClicked=false;
+                for (int fi=0;fi<b.field_count;fi++) {
+                    field_looks& f=b.field[fi];
+                    SDL_Rect fr {br.x+f.rect.x,br.y+f.rect.y,f.rect.w,f.rect.h };
+                    if (is_cursor_in_rect(mx,my,fr)) {
+                        fieldClicked=true;
+                        if (f.type==field_text_looks) {
+                            begin_text_input_looks(app,hit,fi,false);
+                        } else if (f.type==field_number_looks) {
+                            begin_text_input_looks(app,hit,fi,true);
+                        } else if (f.type==field_dropdown_looks) {
+                            app->dropdown_open=true;
+                            app->dropdown_block=hit;
+                            app->dropdown_field=fi;
+                            end_text_input_looks(app);
+                        }
+                        break;
+                    }
+                }
+                if (fieldClicked) return;
+                detach_from_prev(app,hit);
+                app->dragging=true;
+                app->drag_root=hit;
+                app->drag_from_pallete=0;
+                app->drag_ox=(float)mx-b.x;
+                app->drag_oy=(float)my-b.y;
+                end_text_input_looks(app);
+                return;
+            } else {
+                end_text_input_looks(app);
+            }
+        }
+    }
+    if (e.type==SDL_MOUSEBUTTONUP&&e.button.button==SDL_BUTTON_LEFT) {
+        app->mouse_down=false;
+        int mx=e.button.x,my=e.button.y;
+        if (app->dragging) {
+            bool insideWS=is_cursor_in_rect(mx,my,app->workspace);
+            if (!insideWS&&app->drag_from_pallete) {
+                free_block_looks(app,app->drag_root);
+            } else {
+                int target=find_snap_target_looks(app,app->drag_root);
+                if (target>=0)snap_stack_below_looks(app,target,app->drag_root);
+            }
+            app->dragging=false;
+            app->drag_root=-1;
+            app->drag_from_pallete=0;
+        }
+    }
+    if (app->text_input_on) {
+        if (e.type==SDL_TEXTINPUT) {
+            if (app->edit_block>=0&&app->edit_block<max_block_of_looks) {
+                block_looks& b=app->block[app->edit_block];
+                if (b.use&&app->edit_field>=0&&app->edit_field<b.field_count) {
+                    field_looks& f=b.field[app->edit_field];
+                    const char* in=e.text.text;
+                    if (!in) return;
+                    if (!app->is_num_edit) {
+                        size_t cur=std::strlen(f.text);
+                        size_t add=std::strlen(in);
+                        if (cur+add<sizeof(f.text)-1) std::strcat(f.text,in);
+                    } else {
+                        char buf[64];
+                        format_number_looks(buf,sizeof(buf),f.number);
+                        size_t cur=std::strlen(buf);
+                        size_t add=std::strlen(in);
+                        if (cur+add<sizeof(buf)-1) std::strcat(buf,in);
+                        f.number=(float)std::atof(buf);
+                    }
+                }
+            }
+        }
+        if (e.type==SDL_KEYDOWN) {
+            if (e.key.keysym.sym==SDLK_RETURN||e.key.keysym.sym==SDLK_KP_ENTER||e.key.keysym.sym==SDLK_ESCAPE) {
+                end_text_input_looks(app);
+            } else if (e.key.keysym.sym==SDLK_BACKSPACE) {
+                if (app->edit_block>=0&&app->edit_block<max_block_of_looks) {
+                    block_looks& b=app->block[app->edit_block];
+                    if (b.use&&app->edit_field>=0&& app->edit_field<b.field_count) {
+                        field_looks& f=b.field[app->edit_field];
+                        if (!app->is_num_edit) {
+                            size_t n=std::strlen(f.text);
+                            if (n>0) f.text[n-1]='\0';
+                        } else {
+                            char buf[64];
+                            format_number_looks(buf,sizeof(buf),f.number);
+                            size_t n=std::strlen(buf);
+                            if (n>0) buf[n-1]='\0';
+                            f.number=(float)std::atof(buf);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (e.type==SDL_WINDOWEVENT&&e.window.event==SDL_WINDOWEVENT_SIZE_CHANGED) {
+        app->win_w=e.window.data1;
+        app->win_h=e.window.data2;
+        recal_c_layout(app);
+        rebuild_palette(app);
+    }
+    if (e.type==SDL_MOUSEWHEEL) {
+        int mx=app->mouse_x,my=app->mouse_y;
+        if (is_cursor_in_rect(mx,my,app->palet)) {
+            app->palette_scroll_y-=e.wheel.y*30;
+            app->palette_scroll_y=looks_clamp_i(app->palette_scroll_y,0,800);
+            rebuild_palette(app);
+        }
+    }
+}
+static inline void Looks_Update(app_looks* app, float dtSeconds) {
+    (void)dtSeconds;
+    if (!app) return;
+    uint32_t now=SDL_GetTicks();
+    clear_bubble_if_expired_looks(app, now);
+    if (app->running) {
+        bool anyAlive=false;
+        for (int ti=0;ti<app->thread_count;ti++) {
+            thread_looks& th=app->thread[ti];
+            if (!th.ali) continue;
+            anyAlive=true;
+            if (th.wait_until!=0&&now<th.wait_until)continue;
+            int pc=th.pc;
+            if (pc<0||pc>=max_block_of_looks||!app->block[pc].use) {
+                th.ali=false;
+                continue;
+            }
+            th.wait_until=0;
+            exec_block_looks(app,pc,ti,now);
+            int next=app->block[pc].next;
+            th.pc=next;
+            if (next<0)th.ali=false;
+        }
+        if (!anyAlive) app->running=false;
+        bool still = false;
+        for (int ti=0;ti<app->thread_count;ti++) if (app->thread[ti].ali) { still=true; break; }
+        if (!still) { app->running=false;app->thread_count=0;}
+    }
+}
+static inline void Looks_Render(app_looks* app) {
+    if (!app) return;
+    SDL_Renderer* ren=app->ren;
+    set_draw_color(ren,app->back_ground);
+    SDL_RenderClear(ren);
+    set_draw_color(ren,app->panel);
+    SDL_RenderFillRect(ren,&app->top_bar);
+    set_draw_color(ren, app->panel_border);
+    SDL_RenderDrawLine(ren,app->top_bar.x,app->top_bar.y+app->top_bar.h-1,app->top_bar.x+app->top_bar.w,app->top_bar.y+app->top_bar.h-1);
+    draw_filled_rounded_rect_for_looks(ren,app->button_run,8,looks_rgb(60,200,90));
+    draw_rounded_rect_outline_for_looks(ren,app->button_run,8,looks_rgb(20,80,30));
+    draw_text_for_looks(ren,app->button_run.x+26,app->button_run.y+9,"RUN", 1,looks_rgb(10,20,10));
+    draw_filled_rounded_rect_for_looks(ren,app->button_stop,8,looks_rgb(235,85,70));
+    draw_rounded_rect_outline_for_looks(ren,app->button_stop,8,looks_rgb(90,30,20));
+    draw_text_for_looks(ren,app->button_stop.x+24,app->button_stop.y+9,"STOP",1,looks_rgb(30,10,10));
+    draw_filled_rounded_rect_for_looks(ren,app->palet,0,app->panel);
+    set_draw_color(ren,app->panel_border);
+    SDL_RenderDrawLine(ren,app->palet.x+app->palet.w-1,app->palet.y,app->palet.x+app->palet.w-1,app->palet.y+app->palet.h);
+    SDL_Rect palHeader {app->palet.x,app->palet.y,app->palet.w,46 };
+    draw_filled_rounded_rect_for_looks(ren, palHeader, 0, looks_rgb(35,35,45));
+    draw_text_for_looks(ren,palHeader.x+16,palHeader.y+16,"LOOKS",1,looks_rgb(255,255,255));
+    for (int i=0;i<app->palette_count;i++) {
+        const palet_item_looks& it=app->palette_item[i];
+        block_looks temp;
+        std::memset(&temp,0,sizeof(temp));
+        temp.use=true;
+        temp.id=-1;
+        temp.type=it.type;
+        temp.x=(float)it.rect.x;
+        temp.y=(float)it.rect.y;
+        setup_block_fields_looks(app,temp);
+        if (block_is_reporter(it.type)) {
+            temp.w=160;
+        } else {
+            if (temp.w>it.rect.w) temp.w=(float)it.rect.w;
+        }
+        if (temp.y+temp.h<app->palet.y+palHeader.h) continue;
+        if (temp.y > app->palet.y+app->palet.h) continue;
+        draw_block_looks(ren,app,temp,false);
+    }
+    set_draw_color(ren,looks_rgb(248,248,252));
+    SDL_RenderFillRect(ren,&app->workspace);
+    set_draw_color(ren,looks_rgb(220,220,230));
+    SDL_RenderDrawRect(ren,&app->workspace);
+    for (int i=0;i<max_block_of_looks;i++) {
+        if (!app->block[i].use) continue;
+        bool sel=(app->dragging&&app->drag_root==i);
+        draw_block_looks(ren,app,app->block[i],sel);
+    }
+    draw_dropdown_looks(ren,app);
+    render_stage_looks(app);
+    draw_text_for_looks(ren,app->workspace.x+10,app->workspace.y+app->workspace.h-18,"Drag Looks blocks here. Click RUN. Scroll palette with mouse wheel.",1,looks_rgb(90,90,110));
+}
+static inline void Looks_Init(app_looks* app,SDL_Renderer* ren,int winW,int winH) {
+    if (!app) return;
+    std::memset(app,0,sizeof(app_looks));
+    app->ren=ren;
+    app->win_w=winW;
+    app->win_h=winH;
+    app->back_ground=looks_rgb(235,235,240);
+    app->panel=looks_rgb(245,245,250);
+    app->panel_border=looks_rgb(210,210,220);
+    app->looks_color=looks_rgb(150,90,255);
+    app->looks_color_dark=looks_rgb(120,70,220);
+    app->looks_outline=looks_rgb(80,50,160);
+    app->text=looks_rgb(255,255,255);
+    app->input_bg=looks_rgb(255,255,255);
+    app->input_border=looks_rgb(200,200,210);
+    app->highlight=looks_rgb(255,255,255);
+    app->palette_scroll_y=0;
+    app->block_count=0;
+    for (int i=0;i<max_block_of_looks;i++)app->block[i].use=false;
+    app->dragging=false;
+    app->dragRoot=-1;
+    app->edit_block=-1;
+    app->edit_field=-1;
+    app->dropdown_open=false;
+    recal_c_layout(app);
+    reset_stage_looks(app);
+    reset_stage_looks(app);
+    for (int i=0; i<max_sprites_of_looks;i++)app->sprite_order[i]=i;
+    rebuild_palette(app);
+}
+static inline void Looks_Shutdown(app_looks* app) {
+    if (!app) return;
+    end_text_input_looks(app);
+    stop_run_looks(app);
+    for (int i=0; i<max_block_of_looks;i++) if (app->block[i].use)free_block_looks(app,i);
+    reset_sprites_looks(app);
+    reset_stage_looks(app);
+}
 #endif
