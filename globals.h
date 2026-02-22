@@ -1,8 +1,8 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#include <SDL.h>
-#include <SDL_ttf.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include "types.h"
 
 // SDL globals
@@ -27,7 +27,7 @@ extern bool gMouseDown;
 
 // Event state - Section 7
 extern bool gGreenFlagPressed;
-extern char gLastKeyPressed;
+extern SDL_Keycode gLastKeyPressed;
 extern char gLastBroadcast[MAX_NAME_LEN];
 
 #endif

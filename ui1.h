@@ -1,7 +1,7 @@
-#ifndef UI_H
-#define UI_H
+#ifndef UI1_H
+#define UI1_H
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 
 void drawRect(int x, int y, int w, int h, Uint8 r, Uint8 g, Uint8 b);
 void drawRectOutline(int x, int y, int w, int h, Uint8 r, Uint8 g, Uint8 b);

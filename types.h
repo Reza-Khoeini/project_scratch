@@ -1,7 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <SDL_mixer.h>
+#include <SDL2/SDL_mixer.h>
 
 // Constants
 #define WINDOW_WIDTH 1024

@@ -22,5 +22,5 @@ bool gMouseDown = false;
 
 // Event state - Section 7
 bool gGreenFlagPressed = false;
-char gLastKeyPressed = '\0';
+SDL_Keycode gLastKeyPressed = '\0';
 char gLastBroadcast[MAX_NAME_LEN] = "";

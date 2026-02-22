@@ -26,7 +26,11 @@ void broadcastMessage(const char* message) {
 bool checkEvent(Event* event) {
     switch (event->type) {
         case EVENT_GREEN_FLAG:
-            return gGreenFlagPressed;
+            if (gGreenFlagPressed) {
+                gGreenFlagPressed = false;
+                return true;
+            }
+            return false;
         case EVENT_KEY_PRESSED:
             return gLastKeyPressed == event->keyCode;
         case EVENT_BROADCAST_RECEIVED:

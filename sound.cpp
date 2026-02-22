@@ -1,6 +1,6 @@
 #include "sound.h"
 #include "globals.h"
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <cstdio>
 #include <cstring>
 
