@@ -11,7 +11,6 @@ void UIsetSpr (SDL_Texture * tex) {
     sprstamp= tex;
 }
 
-
 // clear
 void EraseALL(SDL_Renderer *renderer) {
     clearAllDrawing(renderer);
@@ -29,9 +28,11 @@ void onStampXY(SDL_Renderer * renderer , int x , int y) {
     penStamp(renderer, sprstamp, &dst);
 }
 
+
 void oPenDown() {
     penDown() ;
 }
+
 
 void oPenUp() {
     penUp() ;

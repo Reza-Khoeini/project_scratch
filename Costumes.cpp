@@ -1,6 +1,8 @@
 #include "Costumes.h"
 #include <SDL2/SDL_image.h>
-
+#include <cstring>
+#include <utility>
+#include <vector>
 
 static  Custome costums[MAX_COSTUMES] ;
 static int counter =0 ;
@@ -9,32 +11,52 @@ static SDL_Renderer * Renderer  = nullptr;
 
 // perview , editor مقادیر
 
-static const int PerviewX = 650 ;
-static const int PerviewY = 10 ;
-static const int PerviewW= 200 ;
-static const int PerviewH = 200 ;
+static constexpr  int PerviewX = 650 ;
+static constexpr  int PerviewY = 10 ;
+static constexpr  int PerviewW= 200 ;
+static constexpr  int PerviewH = 200 ;
 
-static const int EditorW = 420 ;
-static const int EditorH = 420 ;
+static constexpr  int EditorW = 420 ;
+static constexpr  int EditorH = 420 ;
+
 
 static int windowW = 1000 ;
 static int windowH = 900 ;
 static inline Uint32 get_pixel32(SDL_Surface *surface, int x, int y) {
-    Uint8 *p = (Uint8*)surface->pixels + y * surface->pitch + x * 4;
-    return *(Uint32*)p;
+    const Uint8 *p = (const Uint8*)surface->pixels + y * surface->pitch + x * 4;
+    return *(const Uint32*)p;
 }
 
 static inline void put_pixel32(SDL_Surface *surface, int x, int y, Uint32 pixel) {
-    Uint8 *p = (Uint8*)surface->pixels + y * surface->pitch + x * 4;
+    Uint8* p = (Uint8*)surface->pixels + y * surface->pitch + x * 4;
     *(Uint32*)p = pixel;
 }
 static Uint32 colorToPixel(SDL_Surface* surf, SDL_Color c) {
     return SDL_MapRGBA(surf->format, c.r, c.g, c.b, c.a);
 }
-static inline int inBounds(SDL_Surface* surf, int x, int y) {
+static inline bool inBounds(SDL_Surface* surf, int x, int y) {
     return (x >= 0 && y >= 0 && x < surf->w && y < surf->h);
 }
 
+static void updatetexure(int idx) {
+    if (idx < 0 || idx >= counter) {
+        return ;
+    }
+    if (!Renderer) {
+        return ;
+    }
+    Custome* c = & costums[idx];
+    if (!c->surface) {
+        return ;
+    }
+    if (c->texture) {
+        SDL_DestroyTexture(c->texture);
+        c->texture = nullptr;
+    }
+    c->texture = SDL_CreateTextureFromSurface(Renderer, c->surface );
+    c->w = c->surface->w ;
+    c->h = c->surface->h ;
+}
 
 // init &&& shutingdown
 
@@ -63,31 +85,8 @@ void costumeShtingdown(SDL_Renderer * renderer) {
     }
     counter =0 ;
     isSelect = -1 ;
-    renderer = nullptr;
+    Renderer = nullptr;
 }
-
-
-static void updateTexure(int idx) {
-    if (idx < 0 || idx >= counter) {
-        return ;
-    }
-    if (!Renderer) {
-        SDL_Log("updateTexture: Renderer is null");
-        return;
-    }
-    Custome* c = &costums [idx];
-    if (!c->surface) {
-        return;
-    }
-    if (c->texture) {
-        SDL_DestroyTexture(c->texture);
-        c->texture = nullptr;
-    }
-    c->texture = SDL_CreateTextureFromSurface(Renderer, c->surface);
-    c->w = c->surface->w;
-    c->h = c->surface->h;
-}
-
 
 // add and laod
 
@@ -98,15 +97,16 @@ int ADD_image(SDL_Renderer *renderer , const char* path , const char *name , int
     if (counter >= MAX_COSTUMES) {
         return -1 ;
     }
+    Renderer = renderer ;
     SDL_Surface * loading = IMG_Load(path);
     if (!loading) {
-        SDL_Log("Img can not load" , IMG_GetError()) ;
+        SDL_Log("Img can not load:%s" , IMG_GetError()) ;
         return -1 ;
     }
     SDL_Surface* surf = SDL_ConvertSurfaceFormat( loading , SDL_PIXELFORMAT_RGBA32, 0);
     SDL_FreeSurface(loading);
     if (!surf) {
-        SDL_Log("SDL_ConvertSurfaceFormat() failed"  );
+        SDL_Log("SDL_ConvertSurfaceFormat() failed: %s" , SDL_GetError()  ) ;
         return -1 ;
     }
     Custome* c = &costums [counter] ;
@@ -115,7 +115,7 @@ int ADD_image(SDL_Renderer *renderer , const char* path , const char *name , int
     c->surface = surf ;
     c->texture = SDL_CreateTextureFromSurface(Renderer, surf);
     if (!c->texture) {
-        SDL_Log("SDL_CreateTextureFromSurface() failed"  , SDL_GetError() ) ;
+        SDL_Log("SDL_CreateTextureFromSurface failed: %s"  , SDL_GetError() ) ;
     }
     c->w = surf->w;
     c->h = surf->h;
@@ -158,8 +158,24 @@ void cosSetSize(int idx , int  newW , int newH) {
     if (idx < 0 || idx >= counter) {
         return;
     }
-    costums [idx].w = newW ;
-    costums [idx].h = newH ;
+    costums [idx].w = std::max(1,newW) ;
+    costums [idx].h = std::max(1,newH) ;
+}
+
+
+void costgetSIZE(int idx , int * outW , int * outH ) {
+    if (idx < 0 || idx >= counter) return ;
+    if (!outW || !outH) {
+        return ;
+    }
+    *outH  =0 ;
+    *outW  = 0 ;
+    if (idx < 0 || idx >= counter) {
+        return ;
+    }
+    *outW = costums[idx].w;
+    *outH = costums[idx].h;
+
 }
 
 
@@ -191,7 +207,7 @@ void flipHorizontal(int idx) {
     SDL_UnlockSurface(s);
     SDL_FreeSurface(c->surface);
     c->surface = ns;
-    updateTexure(idx) ;
+    updatetexure(idx) ;
 }
 void flipVertical(int idx) {
     if (idx < 0 || idx >= counter) {
@@ -218,13 +234,16 @@ void flipVertical(int idx) {
     SDL_UnlockSurface(s);
     SDL_FreeSurface(c->surface);
     c->surface = ns;
-    updateTexure(idx) ;
+    updatetexure(idx) ;
 }
 
 
 // draw functions ............
 // backdrops
 void drawBkD(SDL_Renderer * renderer) {
+    if (!renderer) {
+        return ;
+    }
     for (int i=0;i<counter;i++) {
         Custome* c = &costums [i] ;
         if (!c->visible || !c->texture) {
@@ -233,13 +252,16 @@ void drawBkD(SDL_Renderer * renderer) {
         if (!c->isBackDROP ) {
             continue;
         }
-        SDL_Rect dest = {c->x , c->y , c->w , c->h} ;
+        SDL_Rect dest{c->x , c->y , c->w , c->h} ;
         SDL_RenderCopy(renderer, c->texture , nullptr , &dest);
     }
 }
 
 // drawing SPRITE
 void drawSprite(SDL_Renderer * renderer) {
+    if (!renderer) {
+        return ;
+    }
     for (int i=0;i<counter;i++) {
         Custome* c = &costums [i] ;
         if (!c->visible || !c->texture) {
@@ -254,6 +276,9 @@ void drawSprite(SDL_Renderer * renderer) {
 }
 
 void drawPreview(SDL_Renderer * renderer) {
+    if (!renderer) {
+        return ;
+    }
     SDL_Rect pr = {PerviewX,PerviewY,PerviewW,PerviewH} ;
     //  بخش بک گراند
     SDL_SetRenderDrawColor(renderer, 50 , 50 , 50 , 200 ) ;
@@ -365,10 +390,7 @@ void GetPreviwRect(SDL_Rect * rect) {
     if (!rect) {
         return ;
     }
-    rect->x = PerviewX ;
-    rect->y = PerviewY ;
-    rect->w = PerviewW ;
-    rect->h = PerviewH ;
+    *rect = SDL_Rect{PerviewX,PerviewY,PerviewW,PerviewH} ;
 }
 
 void GetEditRect(SDL_Rect * rect) {
@@ -396,6 +418,9 @@ void Pen(int idx , int cx , int cy, SDL_Color color , int r) {
         return ;
     }
     SDL_Surface* s = c->surface;
+    if (r<1) {
+        r = 1 ;
+    }
     SDL_LockSurface(s);
     Uint32 pixel  = colorToPixel(s, color);
     int r2 = r*r ;
@@ -403,13 +428,13 @@ void Pen(int idx , int cx , int cy, SDL_Color color , int r) {
         for (int dx = -r ; dx <= r ; dx++) {
             int x = cx + dx ;
             int y = cy + dy ;
-            if(((dx*dx+dy*dy)<=r2)&& inBounds(s,x,y)) {
+            if( inBounds(s,x,y)) {//((dx*dx+dy*dy)<=r2)&&
                 put_pixel32(s,x,y,pixel) ;
             }
         }
     }
     SDL_UnlockSurface(s);
-    updateTexure(idx) ;
+    updatetexure(idx) ;
 }
 
 void Eraser(int idx , int cx , int cy , int r) {
@@ -421,23 +446,26 @@ void Eraser(int idx , int cx , int cy , int r) {
             return ;
         }
         SDL_Surface* s = c->surface;
+    if (r<1) {
+        r = 1 ;
+    }
         SDL_LockSurface(s);
-        Uint32 clearpix = SDL_MapRGBA( s->format , 0,0,0,0) ;
+        Uint32 clearpix1 = SDL_MapRGBA( s->format , 0,0,0,0) ;
         int r2 = r*r ;
         for (int dy = -r ; dy <= r ; dy++) {
             for (int dx = -r ; dx <= r ; dx++) {
                  int x = cx + dx ;
                 int y = cy + dy ;
-                if (((dx*dx+dy*dy)<=r2) && inBounds(s,x,y)) {
-                    put_pixel32(s,x,y,clearpix);
+                if ( inBounds(s,x,y)) {//((dx*dx+dy*dy)<=r2) &&
+                    put_pixel32(s,x,y,clearpix1);
                 }
             }
         }
         SDL_UnlockSurface(s);
-        updateTexure(idx) ;
+        updatetexure(idx) ;
     }
 
-void Fill(int idx , int cx , int cy , SDL_Color color , int r ) {
+void Fill(int idx , int cx , int cy , SDL_Color color  ) {
     if (idx < 0 || idx >= counter) {
         return ;
     }
@@ -457,20 +485,18 @@ void Fill(int idx , int cx , int cy , SDL_Color color , int r ) {
         return ;
     }
     std::vector<std::pair<int,int>> stack ;
-    stack.reserve(1024) ;
+    stack.reserve(2048) ;
     stack.push_back({cx,cy}) ;
     while (!stack.empty()) {
-        auto p = stack.back() ;
+        auto [x, y] = stack.back();
         stack.pop_back() ;
-        int x = p.first ;
-        int y = p.second ;
         int left = x ;
+        int right = y ;
         while (left > 0 && get_pixel32(s,left-1,y) == target) {
-            left -= 1 ;
+            left -- ;
         }
-        int right = x ;
         while (right < s->w-1 && get_pixel32(s,right+1,y) == target) {
-            right += 1 ;
+            right ++ ;
         }
         for (int px= left ; px <= right ; px++) {
             put_pixel32(s,px,y,newpixel);
@@ -483,22 +509,29 @@ void Fill(int idx , int cx , int cy , SDL_Color color , int r ) {
         }
     }
     SDL_UnlockSurface(s);
-    updateTexure(idx) ;
+    updatetexure(idx) ;
 }
 
 static void drawlinesurf(SDL_Surface* s , int x0 , int y0 , int x1 , int y1 , Uint32 pixel , int thick ) {
+    if (!s) {
+        return ;
+    }
+    if (thick < 0) {
+        thick = 0 ;
+    }
     int dx = abs(x1 - x0) , sx = x0 < x1 ? 1 : -1 ;
     int dy = -abs(y1 - y0) , sy = y0 < y1 ? 1 : -1 ;
     int er = dx + dy ;
     while (1) {
         for (int yy = -thick ; yy <= thick ; yy++) {
             for (int xx = -thick ; xx <= thick ; xx++) {
-              if (xx*xx + yy*yy <= thick*thick) {
-                  int px = x0+xx ;
-                  int py = y0+yy ;
-                  if (px > 0 && py >= 0 && px < s->w && py < s->h) {
+              if (xx*xx + yy*yy > thick*thick) {
+                  continue;
+              }
+                int px = x0+xx ;
+                int py = y0+yy ;
+                if (inBounds(s,px,py)) {
                       put_pixel32(s,px,py,pixel) ;
-                  }
               }
             }
         }
@@ -511,7 +544,7 @@ static void drawlinesurf(SDL_Surface* s , int x0 , int y0 , int x1 , int y1 , Ui
             x0+= sx ;
         }
         if (ee < dx ) {
-            ee+=dx ;
+            ee+= dx ;
             y0+= sy ;
         }
     }
@@ -526,9 +559,9 @@ void Line(int idx , int x1 , int y1 , int x2 , int y2 , SDL_Color color , int th
     }
     Uint32 pixel = colorToPixel(c->surface , color) ;
     SDL_LockSurface(c->surface);
-    drawlinesurf(c->surface, x1,y1,x2,y2,pixel,thick);
+    drawlinesurf(c->surface, x1,y1,x2,y2,pixel,std::max(0,thick));
     SDL_UnlockSurface(c->surface);
-    updateTexure(idx) ;
+    updatetexure(idx) ;
 }
 
 void Text(int idx , const char* txt , int cx , int cy , TTF_Font* font  , SDL_Color color ) {
@@ -549,17 +582,18 @@ void Text(int idx , const char* txt , int cx , int cy , TTF_Font* font  , SDL_Co
         return ;
     }
     SDL_Rect dst = {cx, cy , tabd->w,tabd->h};
-    SDL_LockSurface(tabd);
+    SDL_LockSurface(c->surface);
     SDL_BlitSurface(tabd,nullptr,c->surface,&dst);
     SDL_UnlockSurface(c->surface);
     SDL_FreeSurface(tabd);
-    updateTexure(idx);
+    updatetexure(idx);
 }
+
 
 
 void saveEdit(SDL_Renderer * renderer , int idx) {
     (void)renderer;
-    updateTexure(idx);
+    updatetexure(idx);
 }
 
 int  SavetoFile(int idx , const char* filepath ) {
@@ -578,12 +612,4 @@ int  SavetoFile(int idx , const char* filepath ) {
 }
 
 
-
-int costgetSIZE(int idx , int * outW , int * outH ) {
-    if (idx < 0 || idx >= counter) return 0;
-    if (!outW || !outH) return 0;
-    *outW = costums[idx].w;
-    *outH = costums[idx].h;
-    return 1;
-}
 

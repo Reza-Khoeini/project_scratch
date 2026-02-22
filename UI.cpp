@@ -3,19 +3,17 @@
 #include "Costumes.h"
 #include "UICallback.h"
 
-#define MaxButton   35
+static constexpr int MaxButton =  35 ;
 
-
-typedef struct  {
+struct UIButtons  {
     // float x , y ;
     // float widgh , height ;
     //  به صورت زیر اصلاح می شود
-    SDL_Rect rect;
-    const char* id ; //  شناسه دکمه ها
-    const char* text ;
-    bool visible ;
-
-} UIButtons;
+    SDL_Rect rect{};
+    const char* id = nullptr ; //  شناسه دکمه ها
+    const char* text = nullptr ;
+    bool visible = true;
+} ;
 
 
 
@@ -36,16 +34,12 @@ static bool fontOk = false ;
 // costums
 
 static int costTool = coNone ;
-static int costselected = -1 ;
 
 static void uiADDBUTTON(int x , int y , int w ,int h ,const char* id , const char* text  ) {
     if (countOfButtons >= MaxButton) {
         return ;
     }
-    buttons[countOfButtons].rect.x = x;
-    buttons[countOfButtons].rect.y = y;
-    buttons[countOfButtons].rect.w = w;
-    buttons[countOfButtons].rect.h = h;
+    buttons[countOfButtons].rect = SDL_Rect{x, y, w, h};
     buttons[countOfButtons].id = id;
     buttons[countOfButtons].text = text;
     buttons[countOfButtons].visible = true;
@@ -176,7 +170,7 @@ void Shutdown() {
 
 //  تعیین اینکه آیا اینها درون
 
-static  int identifyInrect(int x, int y, SDL_Rect  * r ) {
+static  bool identifyInrect(int x, int y, SDL_Rect  * r ) {
     return ((x >= r->x  && x <= r->x  + r->w ) && (y >= r->y  && y <= r->y + r->h)) ;
 }
 

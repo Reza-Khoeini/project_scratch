@@ -78,7 +78,7 @@ void GetEditRect(SDL_Rect * rect) ;
 
 
 
-int costgetSIZE(int idx , int * outW , int * outH );
+void costgetSIZE(int idx , int * outW , int * outH );
 void cosSetSize(int idx , int  newW , int newH);
 
 //  محل نمایش تصویر در ادیتور

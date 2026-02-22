@@ -1,14 +1,12 @@
 #include "ColorUtil.h"
 
-
 SDL_Color changeColorSlow() {
     static int r = 255 ;
     static int g = 0 ;
     static int b = 0 ;
 
     static int stage  = 0 ;
-
-    int speed = 3 ;
+    constexpr int speed = 3 ;
 
     switch (stage) {
         case 0 : {
@@ -65,9 +63,24 @@ SDL_Color changeColorSlow() {
         }
     }
     //  جلوگیری از  overflow
-     r= (r < 0) ? 0 :(r > 255) ? 255 : r ;
-    g= (g < 0) ? 0 : (g > 255) ? 255 : g ;
-    b= (b < 0) ? 0 : (b > 255) ? 255 : b ;
-    SDL_Color color = {(Uint8)r, (Uint8)g, (Uint8)b  , 255 };
-    return color ;
+    if (r<0) {
+        r =0;
+    }
+    if (r>255) {
+        r = 255 ;
+    }
+    if (g<0) {
+        g= 0 ;
+    }
+    if (g>255) {
+        g = 255 ;
+    }
+    if (b<0) {
+        b = 0 ;
+    }
+    if (b>255) {
+        b = 255 ;
+    }
+    return      SDL_Color  {(Uint8)r, (Uint8)g, (Uint8)b  , 255 };
+
 }
