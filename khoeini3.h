@@ -73,7 +73,7 @@ static inline uint8_t font_row_text_h(char c,int row) {
     if (row<0||row>6) {
         return 0;
     }
-    if(c>='a'&&h<='z') {
+    if(c>='a'&& c<='z') {
         c=(char)(c-'a'+'A');
     }
     #define bl(r0,r1,r2,r3,r4,r5,r6) {static const uint8_t r[7]={r0,r1,r2,r3,r4,r5,r6};return r[row];}
@@ -374,7 +374,7 @@ struct  app_looks{
     int mouse_y;
     int mouse_down;
 };
-static inline SDL_Texture* create_checker_texture_looks(SDSDL_Renderer* ren,int w,int h,SDL_Color a,SDL_Color b) {
+static inline SDL_Texture* create_checker_texture_looks(SDL_Renderer* ren,int w,int h,SDL_Color a,SDL_Color b) {
     SDL_Surface * sur=SDL_CreateRGBSurfaceWithFormat(0,w,h,32,SDL_PIXELFORMAT_RGBA32);
     if (!sur) {
         return nullptr;
@@ -618,14 +618,14 @@ static inline void setup_block_fields_looks(app_looks* app,block_looks& b) {
             b.w=305;
             b.h=44;
             b.field_count=2;
-            init_field_text_looks(b.fields[0],SDL_Rect{74,12,150,20},"Hmm...");
-            init_field_num(b.fields[1],SDL_Rect{255,12,36,20},2.0f);
+            init_field_text_looks(b.field[0],SDL_Rect{74,12,150,20},"Hmm...");
+            init_field_num(b.field[1],SDL_Rect{255,12,36,20},2.0f);
             break;
         case block_swich_costume_looks:
             b.w=275;
             b.h=44;
             b.field_count=1;
-            init_field_dd_looks(b.fields[0],SDL_Rect{160,12,100,20},0);
+            init_field_dd_looks(b.field[0],SDL_Rect{160,12,100,20},0);
             break;
         case block_next_costume_looks:
             b.field_count=0;
@@ -711,7 +711,7 @@ static inline block_looks* all_oc_block_looks(app_looks* app,block_type_looks ty
     for (int i=0;i<max_block_of_looks;i++) {
         if (!app->block[i].use) {
             block_looks* b= app->block[i];
-            memset(&b,0,sizeof(block_looks));
+            std::memset(&b,0,sizeof(block_looks));
             b->use=true;
             b->id=i;
             b->type=type;
@@ -719,7 +719,7 @@ static inline block_looks* all_oc_block_looks(app_looks* app,block_type_looks ty
             b->y=(float)app->workspace.y+30.0f;
             setup_block_fields_looks(app,b);
             app->block_count=(app->block_count<i+1)?(i+1):app->block_count;
-            return &b;
+            return & b;
         }
     }
     return nullptr;
@@ -784,7 +784,7 @@ static inline int find_snap_target_looks(app_looks* app,int dragroot) {
         float dx=(topx-cx);
         float dy=(topy-cy);
         float dist=sqrtf(dx*dx+dy*dy);
-        if (dist<best_dist&&dist<=(flaot)snap_dist_looks) {
+        if (dist<best_dist&&dist<=(float)snap_dist_looks) {
             best_dist=dist;
             best=i;
         }
@@ -890,7 +890,7 @@ static inline void draw_stack_block_looks(SDL_Renderer* ren,const app_looks* app
     SDL_Rect r{(int)b.x,(int)b.y,(int)b.w,(int)b.h};
     SDL_Rect tab{r.x+34,r.y+r.h-2,64,10};
     draw_filled_rounded_rect_for_looks(ren,r,10,fill);
-    draw_filled_rounded_rect_for_looks(reb,tab,5,fill);
+    draw_filled_rounded_rect_for_looks(ren,tab,5,fill);
     SDL_Rect notch{r.x+36,r.y-1,56,9};
     draw_filled_rounded_rect_for_looks(ren,notch,4,bg);
     draw_rounded_rect_outline_for_looks(ren,r,10,selected?app->highlight:outline);
@@ -983,7 +983,7 @@ static inline void draw_stack_block_looks(SDL_Renderer* ren,const app_looks* app
                     int idx=looks_clamp_i(f.dropdown_index,0,sp.costume_count-1);
                     std::snprintf(label,sizeof(label),"%s",sp.costume[idx].name);
                 }
-            } else if (b.type==block_swich_backdrop_looks&&app->stage.backdropCount>0) {
+            } else if (b.type==block_swich_backdrop_looks&&app->stage.backdrop_count>0) {
                 int idx=looks_clamp_i(f.dropdown_index,0,app->stage.backdrop_count-1);
                 std::snprintf(label,sizeof(label),"%s",app->stage.backdrop[idx].name);
             }
@@ -994,7 +994,7 @@ static inline void draw_stack_block_looks(SDL_Renderer* ren,const app_looks* app
         }
     }
 }
-static inline void draw_reporter_block_looks(SDL_Renderer* ren,const app_looks* app,const block_looks& b,bool selected) {
+static inline void draw_reporter_block_looks(SDL_Renderer* ren, app_looks* app,const block_looks& b,bool selected) {
     SDL_Color fill=looks_rgb(150,110,255);
     SDL_Rect r{(int)b.x,(int)b.y,(int)b.w,(int)b.h};
     draw_filled_rounded_rect_for_looks(ren,r,14,fill);
@@ -1002,7 +1002,7 @@ static inline void draw_reporter_block_looks(SDL_Renderer* ren,const app_looks* 
     const char* t=block_title_looks(b.type);
     draw_text_for_looks(ren,r.x+10,r.y+9,t,1,app->text);
 }
-static inline void draw_block_looks(SDL_Renderer* ren,const app_looks& app,const block_looks& b,bool selected) {
+static inline void draw_block_looks(SDL_Renderer* ren, app_looks& app,const block_looks& b,bool selected) {
     if (block_is_reporter(b.type))draw_reporter_block_looks(ren,app,b,selected);
     else {
         draw_stack_block_looks(ren,app,b,selected);
@@ -1101,7 +1101,7 @@ static inline void draw_bubble_looks(SDL_Renderer* ren,const app_looks* app,int 
     if (sp.bubble_text[0]=='\0') return;
     int px,py;
     stage_to_screen_looks(app,sp.x,sp.y,px,py);
-    int len=(int)std::strlen(sp.bubbleText);
+    int len=(int)std::strlen(sp.bubble_text);
     int w=looks_clamp_i(80+len*6,90,260);
     int h=40;
     SDL_Rect bubble {px+30,py-70,w,h};
@@ -1109,8 +1109,8 @@ static inline void draw_bubble_looks(SDL_Renderer* ren,const app_looks* app,int 
     if (bubble.y<app->stage_p.y)bubble.y=app->stage_p.y+6;
     draw_filled_rounded_rect_for_looks(ren,bubble,12,looks_rgb(255,255,255));
     draw_rounded_rect_outline_for_looks(ren,bubble,12,looks_rgb(30,30,30));
-    draw_text_for_looks(ren,bubble.x+10,bubble.y+14,sp.bubbleText,1,looks_rgb(10,10,10));
-    if (sp.bubbleType==bubble_say_looks) {
+    draw_text_for_looks(ren,bubble.x+10,bubble.y+14,sp.bubble_text,1,looks_rgb(10,10,10));
+    if (sp.bubble_type==bubble_say_looks) {
         SDL_Point p1 {px+18,py-20};
         SDL_Point p2 {bubble.x+20,bubble.y+bubble.h};
         SDL_Point p3 {bubble.x+44,bubble.y+bubble.h};
@@ -1287,7 +1287,7 @@ static inline void move_sprite_order_looks(app_looks* app,int spriteIdx,int newP
     if (cur<0||cur==newPosFrontIndex0)return;
     int tmp=app->sprite_order[cur];
     if (cur<newPosFrontIndex0) {
-        for (inti=cur;i<newPosFrontIndex0;i++)app->sprite_order[i]=app->sprite_order[i+1];
+        for (int i=cur;i<newPosFrontIndex0;i++)app->sprite_order[i]=app->sprite_order[i+1];
     } else {
         for (int i=cur;i>newPosFrontIndex0;i--)app->sprite_order[i]=app->sprite_order[i-1];
     }
